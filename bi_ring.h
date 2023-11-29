@@ -2,7 +2,7 @@
 #define LAB2_BI_RING_H
 
 template <typename Key, typename Info>
-class bi_ring_test {
+class bi_ring {
 private:
     struct Node {
         Key key;
@@ -115,11 +115,11 @@ public:
         friend class bi_ring;
     };
 
-    bi_ring_test(): count(0){
+    bi_ring(): count(0){
         head = new Node;
         head->prev = head->next = head;
     };
-    bi_ring_test(const bi_ring_test& src) : count(0) {
+    bi_ring(const bi_ring& src) : count(0) {
         head = new Node;
         head->prev = head->next = head;
 
@@ -127,11 +127,11 @@ public:
             push_front(elements.key, elements.info);
         };
     }
-    ~bi_ring_test(){
+    ~bi_ring(){
         clear();
         delete head;
     };
-    bi_ring_test& operator=(const bi_ring_test& src){
+    bi_ring& operator=(const bi_ring& src){
         if(this != &src){
             clear();
 
