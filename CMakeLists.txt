@@ -5,6 +5,8 @@ option(FETCHCONTENT_QUIET "" OFF)
 option(FETCHCONTENT_UPDATES_DISCONNECTED "" ON)
 Include(FetchContent)
 
+option(CATCH_CONFIG_ENABLE_ALL_STRINGMAKERS "" YES )
+
 FetchContent_Declare(Catch2
         URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.4.0.tar.gz
         )
