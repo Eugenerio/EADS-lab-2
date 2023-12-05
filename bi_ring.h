@@ -130,34 +130,39 @@ public:
     typedef iterator<Key, Info, bi_ring> mod_iterator;
     typedef iterator<const Key, const Info, bi_ring> const_iterator;
 
-    bi_ring(): length(0){
+    bi_ring() : length(0)
+    {
         sentinel = new Node(Key(), Info(), nullptr, nullptr);
         sentinel->next = sentinel;
         sentinel->prev = sentinel;
-    }
-
-    bi_ring(const bi_ring &src): length(0){
+    };
+    bi_ring(const bi_ring &src) : length(0)
+    {
         sentinel = new Node(Key(), Info(), nullptr, nullptr);
         sentinel->next = sentinel;
         sentinel->prev = sentinel;
         *this = src;
-    }
-
-    ~bi_ring(){
+    };
+    ~bi_ring()
+    {
         clear();
         delete sentinel;
-    }
-
-    bi_ring &operator=(const bi_ring &src){
-        if(this != &src){
+    };
+    bi_ring &operator=(const bi_ring &src)
+    {
+        if (this != &src)
+        {
             clear();
+            // Copy elements from src to this using iterators
+            for (auto it = src.cbegin(); it != src.cend(); it.next())
+            {
 
-            for(auto it = src.cbegin(); it != src.cend(); it.next()){
                 push_back(it.key(), it.info());
             }
         }
         return *this;
-    }
+    };
+
 
     [[nodiscard]] unsigned int getLength() const{
         return length;
@@ -165,6 +170,27 @@ public:
 
     [[nodiscard]] bool isEmpty() const{
         return length == 0;
+    }
+
+    bool operator==(const bi_ring& other) const {
+        if (length != other.length) {
+            return false;
+        }
+
+        auto thisIt = cbegin();
+        auto otherIt = other.cbegin();
+
+        for (; thisIt != cend(); thisIt.next(), otherIt.next()) {
+            if (thisIt.key() != otherIt.key() || thisIt.info() != otherIt.info()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    bool operator!=(const bi_ring& other) const {
+        return *this != other;
     }
 
     /**
@@ -237,7 +263,7 @@ public:
     template <typename iterator>
     bool find_key(iterator &it, const Key &key,
                   iterator &search_from,
-                  iterator &search_till)
+                  iterator &search_till) const
     {
         for (; search_from != search_till; search_from.next())
         {
@@ -262,15 +288,15 @@ public:
      */
     unsigned int occurrencesOf(const Key &key) const
     {
-        unsigned int count = 0;
+        unsigned int counter = 0;
         for (auto it = cbegin(); it != cend(); it.next())
         {
             if (it.key() == key)
             {
-                count++;
+                counter++;
             }
         }
-        return count;
+        return counter;
     };
 
     /**
@@ -320,7 +346,7 @@ public:
     /**
      * @brief returns iterator pointing on first element of the ring
      *
-     * @return modifying_iterator
+     * @return mod_iterator
      */
     mod_iterator begin()
     {
@@ -330,7 +356,7 @@ public:
     /**
      * @brief returns constant iterator pointing on first element of the ring
      *
-     * @return const_iterator
+     * @return constant_iterator
      */
     const_iterator cbegin() const
     {
@@ -358,5 +384,114 @@ public:
     };
 
 };
+
+template <typename Key, typename Info>
+std::ostream& operator<<(std::ostream& os, const bi_ring<Key, Info>& ring) {
+    os << "{ ";
+    bool first = true;
+    for (auto it = ring.cbegin(); it != ring.cend(); it.next()) {
+        if (!first) {
+            os << ", ";
+        }
+        os << it.key() << " = " << it.info();
+        first = false;
+    }
+    os << " }";
+    return os;
+}
+
+//////EXTERNAL FUNCTIONS///////////////
+template <typename Key, typename Info>
+bi_ring<Key, Info> filter(const bi_ring<Key, Info> &source, bool (*pred)(const Key &))
+{
+    bi_ring<Key, Info> result;
+
+    for (auto it = source.cbegin(); it != source.cend(); it.next())
+    {
+        if (pred(it.key()))
+        {
+            result.push_back(it.key(), it.info());
+        }
+    }
+
+    return result;
+}
+
+template <typename Key, typename Info>
+bi_ring<Key, Info> unique(const bi_ring<Key, Info> &src, Info (*aggregate)(const Key &, const Info &, const Info &))
+{
+    bi_ring<Key, Info> result;
+
+    for (auto it = src.cbegin(); it != src.cend(); it.next())
+    {
+        auto search_res = result.cbegin();
+        auto sf = result.cbegin();
+        auto st = result.cend();
+        Key key = it.key();
+        if (result.find_key(search_res, key, sf, st))
+        {
+            continue;
+        }
+        auto searching_it = src.cbegin();
+        auto search_from = it;
+        search_from.next();
+        auto search_till = src.cend();
+        Info new_info = it.info();
+        while (src.find_key(searching_it, key, search_from, search_till))
+        {
+            new_info = aggregate(key, new_info, searching_it.info());
+            search_from.next();
+        }
+        result.push_back(it.key(), new_info);
+    }
+    return result;
+}
+
+template <typename Key, typename Info>
+Info sum_info(const Key &, const Info &i1, const Info &i2)
+{
+    return i1 + i2;
+}
+template <typename Key, typename Info>
+bi_ring<Key, Info> join(const bi_ring<Key, Info> &first, const bi_ring<Key, Info> &second)
+{
+    bi_ring<Key, Info> pre_result = first;
+    for (auto it = second.cbegin(); it != second.cend(); it.next())
+    {
+        pre_result.push_back(it.key(), it.info());
+    }
+    return unique(pre_result, sum_info<Key, Info>);
+}
+
+template <typename Key, typename Info>
+bi_ring<Key, Info> shuffle(
+        const bi_ring<Key, Info> &first, unsigned int fcnt,
+        const bi_ring<Key, Info> &second, unsigned int scnt,
+        unsigned int reps)
+{
+    bi_ring<Key, Info> result;
+
+    auto first_it = first.cbegin();
+    auto second_it = second.cbegin();
+
+    for (unsigned int rep = 0; rep < reps; rep++)
+    {
+        for (unsigned int i = 0; i < fcnt; i++)
+        {
+            result.push_back(first_it.key(), first_it.info());
+
+            first_it++;
+        }
+
+        for (unsigned int i = 0; i < scnt; i++)
+        {
+            result.push_back(second_it.key(), second_it.info());
+
+            second_it++;
+        }
+    }
+
+    return result;
+}
 
 #endif
