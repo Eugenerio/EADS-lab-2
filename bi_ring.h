@@ -15,8 +15,7 @@ private:
         Key key;
         Info info;
 
-        Node(const Key &_key, const Info &_info, Node *_next, Node *_prev)
-            : key(_key), info(_info), next(_next), prev(_prev){}
+        Node(const Key &key, const Info &info, Node *next, Node *prev): key(key), info(info), next(next), prev(prev){}
 
         friend  class bi_ring;
     };
@@ -105,12 +104,26 @@ private:
             return *this;
         }
 
+        iterator get_next(){
+            if(ptr == nullptr){
+                throw runtime_error("Iterator is null");
+            }
+            return iterator(ptr->next, ring);
+        }
+
         iterator prev(){
             if(ptr == nullptr){
                 throw runtime_error("Iterator is null");
             }
             ptr = ptr->prev;
             return *this;
+        }
+
+        iterator get_prev(){
+            if(ptr == nullptr){
+                throw runtime_error("Iterator is null");
+            }
+            return iterator(ptr->prev, ring);
         }
 
         KeyT &key() const{
@@ -251,28 +264,22 @@ public:
     }
 
     /**
-     * Searches for the specified element of a given key.
-     *
-     * @param [out] it is modifying iterator pointing on found element
-     * @param key The key to search for.
-     * @param search_from iterator pointing on element from which start searching
-     * @param search_till iterator pointing on element until which element to search
-     * @return true if element found
-     * @return false if element not found
+      * Searches for the specified element of a given key.
+      *
+      * @param [out] it is modifying iterator pointing on found element
+      * @param key The key to search for.
+      * @param search_from iterator pointing on element from which start searching
+      * @param search_till iterator pointing on element until which element to search
+      * @return true if element found
+      * @return false if element not found
      */
     template <typename iterator>
-    bool find_key(iterator &it, const Key &key,
-                  iterator &search_from,
-                  iterator &search_till) const
-    {
-        for (; search_from != search_till; search_from.next())
-        {
-            if (search_from.ptr == sentinel)
-            {
+    bool find_key(iterator &it, const Key &key, iterator &search_from, iterator &search_till) const {
+        for (; search_from != search_till; search_from.next()){
+            if (search_from.ptr == sentinel){
                 continue;
             }
-            if (search_from.key() == key)
-            {
+            if (search_from.key() == key){
                 it = search_from;
                 return true;
             }
@@ -402,14 +409,11 @@ std::ostream& operator<<(std::ostream& os, const bi_ring<Key, Info>& ring) {
 
 //////EXTERNAL FUNCTIONS///////////////
 template <typename Key, typename Info>
-bi_ring<Key, Info> filter(const bi_ring<Key, Info> &source, bool (*pred)(const Key &))
-{
+bi_ring<Key, Info> filter(const bi_ring<Key, Info> &source, bool (*pred)(const Key &)){
     bi_ring<Key, Info> result;
 
-    for (auto it = source.cbegin(); it != source.cend(); it.next())
-    {
-        if (pred(it.key()))
-        {
+    for (auto it = source.cbegin(); it != source.cend(); it.next()){
+        if (pred(it.key())){
             result.push_back(it.key(), it.info());
         }
     }
@@ -418,27 +422,22 @@ bi_ring<Key, Info> filter(const bi_ring<Key, Info> &source, bool (*pred)(const K
 }
 
 template <typename Key, typename Info>
-bi_ring<Key, Info> unique(const bi_ring<Key, Info> &src, Info (*aggregate)(const Key &, const Info &, const Info &))
-{
+bi_ring<Key, Info> unique(const bi_ring<Key, Info> &src, Info (*aggregate)(const Key &, const Info &, const Info &)){
     bi_ring<Key, Info> result;
 
-    for (auto it = src.cbegin(); it != src.cend(); it.next())
-    {
+    for (auto it = src.cbegin(); it != src.cend(); it.next()){
         auto search_res = result.cbegin();
         auto sf = result.cbegin();
         auto st = result.cend();
         Key key = it.key();
-        if (result.find_key(search_res, key, sf, st))
-        {
+        if (result.find_key(search_res, key, sf, st)){
             continue;
         }
         auto searching_it = src.cbegin();
-        auto search_from = it;
-        search_from.next();
+        auto search_from = it.get_next();
         auto search_till = src.cend();
         Info new_info = it.info();
-        while (src.find_key(searching_it, key, search_from, search_till))
-        {
+        while (src.find_key(searching_it, key, search_from, search_till)){
             new_info = aggregate(key, new_info, searching_it.info());
             search_from.next();
         }
@@ -448,43 +447,34 @@ bi_ring<Key, Info> unique(const bi_ring<Key, Info> &src, Info (*aggregate)(const
 }
 
 template <typename Key, typename Info>
-Info sum_info(const Key &, const Info &i1, const Info &i2)
-{
+Info sum_info(const Key &, const Info &i1, const Info &i2){
     return i1 + i2;
 }
+
 template <typename Key, typename Info>
-bi_ring<Key, Info> join(const bi_ring<Key, Info> &first, const bi_ring<Key, Info> &second)
-{
+bi_ring<Key, Info> join(const bi_ring<Key, Info> &first, const bi_ring<Key, Info> &second){
     bi_ring<Key, Info> pre_result = first;
-    for (auto it = second.cbegin(); it != second.cend(); it.next())
-    {
+    for (auto it = second.cbegin(); it != second.cend(); it.next()){
         pre_result.push_back(it.key(), it.info());
     }
     return unique(pre_result, sum_info<Key, Info>);
 }
 
 template <typename Key, typename Info>
-bi_ring<Key, Info> shuffle(
-        const bi_ring<Key, Info> &first, unsigned int fcnt,
-        const bi_ring<Key, Info> &second, unsigned int scnt,
-        unsigned int reps)
-{
+bi_ring<Key, Info> shuffle(const bi_ring<Key, Info> &first, unsigned int fcnt, const bi_ring<Key, Info> &second, unsigned int scnt, unsigned int reps){
     bi_ring<Key, Info> result;
 
     auto first_it = first.cbegin();
     auto second_it = second.cbegin();
 
-    for (unsigned int rep = 0; rep < reps; rep++)
-    {
-        for (unsigned int i = 0; i < fcnt; i++)
-        {
+    for (unsigned int rep = 0; rep < reps; rep++){
+        for (unsigned int i = 0; i < fcnt; i++){
             result.push_back(first_it.key(), first_it.info());
 
             first_it++;
         }
 
-        for (unsigned int i = 0; i < scnt; i++)
-        {
+        for (unsigned int i = 0; i < scnt; i++){
             result.push_back(second_it.key(), second_it.info());
 
             second_it++;
