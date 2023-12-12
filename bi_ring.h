@@ -26,9 +26,9 @@ private:
         friend class bi_ring;
 
         Node *ptr;
-        const Ring &ring;
+        const Ring *ring;
 
-        iterator(Node *ptr, const Ring &ring): ptr(ptr), ring(ring) {}
+        iterator(Node *ptr, const Ring *ring): ptr(ptr), ring(ring) {}
 
     public:
         bool operator==(const iterator &other) const{
@@ -48,7 +48,7 @@ private:
 
         iterator operator+(int step) const{
             iterator res = *this;
-            for(int i = 0; i < step % ring.length; i++){
+            for(int i = 0; i < step % ring->length; i++){
                 res++;
             }
             return res;
@@ -56,7 +56,7 @@ private:
 
         iterator operator-(int step) const{
             iterator res = *this;
-            for(int i = 0; i < step % ring.length; i++){
+            for(int i = 0; i < step % ring->length; i++){
                 res--;
             }
             return res;
@@ -64,7 +64,7 @@ private:
 
         iterator operator++(){
             next();
-            if(ptr == ring.sentinel){
+            if(ptr == ring->sentinel){
                 next();
             }
             return *this;
@@ -73,7 +73,7 @@ private:
         iterator operator++(int){
             iterator temp = *this;
             next();
-            if(ptr == ring.sentinel){
+            if(ptr == ring->sentinel){
                 next();
             }
             return temp;
@@ -81,7 +81,7 @@ private:
 
         iterator operator--(){
             prev();
-            if(ptr == ring.sentinel){
+            if(ptr == ring->sentinel){
                 prev();
             }
             return *this;
@@ -90,7 +90,7 @@ private:
         iterator operator--(int){
             iterator temp = *this;
             prev();
-            if(ptr == ring.sentinel){
+            if(ptr == ring->sentinel){
                 prev();
             }
             return temp;
@@ -148,19 +148,19 @@ public:
         sentinel = new Node(Key(), Info(), nullptr, nullptr);
         sentinel->next = sentinel;
         sentinel->prev = sentinel;
-    };
+    }
     bi_ring(const bi_ring &src) : length(0)
     {
         sentinel = new Node(Key(), Info(), nullptr, nullptr);
         sentinel->next = sentinel;
         sentinel->prev = sentinel;
         *this = src;
-    };
+    }
     ~bi_ring()
     {
         clear();
         delete sentinel;
-    };
+    }
     bi_ring &operator=(const bi_ring &src)
     {
         if (this != &src)
@@ -174,7 +174,7 @@ public:
             }
         }
         return *this;
-    };
+    }
 
 
     [[nodiscard]] unsigned int getLength() const{
@@ -203,7 +203,7 @@ public:
     }
 
     bool operator!=(const bi_ring& other) const {
-        return *this != other;
+        return this != other;
     }
 
     /**
@@ -227,7 +227,7 @@ public:
 
         length++;
 
-        return mod_iterator(newNode, *this);
+        return mod_iterator(newNode, this);
     }
 
     /**
@@ -254,8 +254,8 @@ public:
 
         length--;
 
-        return mod_iterator(nextNode, *this);
-    };
+        return mod_iterator(nextNode, this);
+    }
 
     void clear(){
         while(!isEmpty()){
@@ -285,7 +285,7 @@ public:
             }
         }
         return false;
-    };
+    }
 
     /**
      * @brief number of occurrences of key
@@ -304,7 +304,7 @@ public:
             }
         }
         return counter;
-    };
+    }
 
     /**
      * @brief inserts element in the beginning of the ring
@@ -316,7 +316,7 @@ public:
     mod_iterator push_front(const Key &key, const Info &info)
     {
         return insert(cbegin(), key, info);
-    };
+    }
 
     /**
      * @brief inserts element in the end of the ring
@@ -328,7 +328,7 @@ public:
     mod_iterator push_back(const Key &key, const Info &info)
     {
         return insert(cend(), key, info);
-    };
+    }
 
     /**
      * @brief erases first element in the ring
@@ -338,7 +338,7 @@ public:
     mod_iterator pop_front()
     {
         return erase(cbegin());
-    };
+    }
 
     /**
      * @brief erases last element in the ring
@@ -348,7 +348,7 @@ public:
     mod_iterator pop_back()
     {
         return --erase(--cend());
-    };
+    }
 
     /**
      * @brief returns iterator pointing on first element of the ring
@@ -357,8 +357,8 @@ public:
      */
     mod_iterator begin()
     {
-        return mod_iterator(sentinel->next, *this);
-    };
+        return mod_iterator(sentinel->next, this);
+    }
 
     /**
      * @brief returns constant iterator pointing on first element of the ring
@@ -367,8 +367,8 @@ public:
      */
     const_iterator cbegin() const
     {
-        return const_iterator(sentinel->next, *this);
-    };
+        return const_iterator(sentinel->next, this);
+    }
 
     /**
      * @brief returns iterator pointing on the last element of the ring
@@ -377,8 +377,8 @@ public:
      */
     mod_iterator end()
     {
-        return mod_iterator(sentinel, *this);
-    };
+        return mod_iterator(sentinel, this);
+    }
 
     /**
      * @brief return the constant iterator pointing on the last element of the ring
@@ -387,8 +387,8 @@ public:
      */
     const_iterator cend() const
     {
-        return const_iterator(sentinel, *this);
-    };
+        return const_iterator(sentinel, this);
+    }
 
 };
 
@@ -454,11 +454,14 @@ Info sum_info(const Key &, const Info &i1, const Info &i2){
 template <typename Key, typename Info>
 bi_ring<Key, Info> join(const bi_ring<Key, Info> &first, const bi_ring<Key, Info> &second){
     bi_ring<Key, Info> pre_result = first;
-    for (auto it = second.cbegin(); it != second.cend(); it.next()){
+
+    for (auto it = second.cbegin(); it != second.cend(); it.next()) {
         pre_result.push_back(it.key(), it.info());
     }
+
     return unique(pre_result, sum_info<Key, Info>);
 }
+
 
 template <typename Key, typename Info>
 bi_ring<Key, Info> shuffle(const bi_ring<Key, Info> &first, unsigned int fcnt, const bi_ring<Key, Info> &second, unsigned int scnt, unsigned int reps){
@@ -467,21 +470,18 @@ bi_ring<Key, Info> shuffle(const bi_ring<Key, Info> &first, unsigned int fcnt, c
     auto first_it = first.cbegin();
     auto second_it = second.cbegin();
 
-    for (unsigned int rep = 0; rep < reps; rep++){
-        for (unsigned int i = 0; i < fcnt; i++){
+    for (unsigned int rep = 0; rep < reps; rep++) {
+        for (unsigned int i = 0; i < fcnt; i++, first_it++) {
             result.push_back(first_it.key(), first_it.info());
-
-            first_it++;
         }
 
-        for (unsigned int i = 0; i < scnt; i++){
+        for (unsigned int i = 0; i < scnt; i++, second_it++) {
             result.push_back(second_it.key(), second_it.info());
-
-            second_it++;
         }
     }
 
     return result;
 }
+
 
 #endif
