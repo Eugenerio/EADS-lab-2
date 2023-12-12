@@ -407,7 +407,6 @@ std::ostream& operator<<(std::ostream& os, const bi_ring<Key, Info>& ring) {
     return os;
 }
 
-//////EXTERNAL FUNCTIONS///////////////
 template <typename Key, typename Info>
 bi_ring<Key, Info> filter(const bi_ring<Key, Info> &source, bool (*pred)(const Key &)){
     bi_ring<Key, Info> result;
@@ -418,31 +417,6 @@ bi_ring<Key, Info> filter(const bi_ring<Key, Info> &source, bool (*pred)(const K
         }
     }
 
-    return result;
-}
-
-template <typename Key, typename Info>
-bi_ring<Key, Info> unique(const bi_ring<Key, Info> &src, Info (*aggregate)(const Key &, const Info &, const Info &)){
-    bi_ring<Key, Info> result;
-
-    for (auto it = src.cbegin(); it != src.cend(); it.next()){
-        auto search_res = result.cbegin();
-        auto sf = result.cbegin();
-        auto st = result.cend();
-        Key key = it.key();
-        if (result.find_key(search_res, key, sf, st)){
-            continue;
-        }
-        auto searching_it = src.cbegin();
-        auto search_from = it.get_next();
-        auto search_till = src.cend();
-        Info new_info = it.info();
-        while (src.find_key(searching_it, key, search_from, search_till)){
-            new_info = aggregate(key, new_info, searching_it.info());
-            search_from.next();
-        }
-        result.push_back(it.key(), new_info);
-    }
     return result;
 }
 
@@ -462,6 +436,35 @@ bi_ring<Key, Info> join(const bi_ring<Key, Info> &first, const bi_ring<Key, Info
     return unique(pre_result, sum_info<Key, Info>);
 }
 
+template <typename Key, typename Info>
+bi_ring<Key, Info> unique(const bi_ring<Key, Info> &src, Info (*aggregate)(const Key &, const Info &, const Info &)) {
+    bi_ring<Key, Info> result;
+
+    for (auto it = src.cbegin(); it != src.cend(); it.next()) {
+        auto search_res = result.cbegin();
+        auto sf = result.cbegin();
+        auto st = result.cend();
+        Key key = it.key();
+
+        if (result.find_key(search_res, key, sf, st)) {
+            continue;
+        }
+
+        auto searching_it = src.cbegin();
+        auto search_from = it.get_next();
+        auto search_till = src.cend();
+        Info new_info = it.info();
+
+        while (src.find_key(searching_it, key, search_from, search_till)) {
+            new_info = aggregate(key, new_info, searching_it.info());
+            search_from.next();
+        }
+
+        result.push_back(key, new_info);
+    }
+
+    return result;
+}
 
 template <typename Key, typename Info>
 bi_ring<Key, Info> shuffle(const bi_ring<Key, Info> &first, unsigned int fcnt, const bi_ring<Key, Info> &second, unsigned int scnt, unsigned int reps){
@@ -482,6 +485,5 @@ bi_ring<Key, Info> shuffle(const bi_ring<Key, Info> &first, unsigned int fcnt, c
 
     return result;
 }
-
 
 #endif
