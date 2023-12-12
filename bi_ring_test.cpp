@@ -1,7 +1,6 @@
 #include "catch2/catch_test_macros.hpp"
 #include "bi_ring.h"
 #include <iostream>
-#include <sstream>
 
 typedef bi_ring<int, string> ring;
 
