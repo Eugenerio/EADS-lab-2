@@ -449,16 +449,16 @@ bool pred(const string &str)
 TEST_CASE("filter ")
 {
     bi_ring<string, int> source;
-    string keys[] = {"un", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix"};
-    for (int i = 0; i < 10; i++)
+    string keys[] = {"uno", "due", "tre", "quattro", "cinque", "sei", "sette", "otto"};
+    for (int i = 0; i < 8; i++)
     {
-        source.push_back(keys[i], i + 1);
+        source.push_back(keys[i], (i + 1) * 3);
     }
 
     auto res = filter(source, pred);
 
-    string res_keys[] = {"deux", "trois", "quatre", "cinq", "sept", "huit", "neuf"};
-    int res_infos[] = {2, 3, 4, 5, 7, 8, 9};
+    string res_keys[] = {"quattro", "cinque", "sette", "otto"};
+    int res_infos[] = {12, 15, 21, 24};
     int i = 0;
     for (auto it = res.cbegin(); it != res.cend(); it.next())
     {
@@ -511,25 +511,27 @@ TEST_CASE("unique")
 
 TEST_CASE("join")
 {
-    bi_ring<int, string> first;
-    first.push_back(1, "One");
-    first.push_back(2, "Two");
-    first.push_back(3, "Three");
-    first.push_back(4, "Four");
+    bi_ring<string, int> first;
+    first.push_back("uno", 1);
+    first.push_back("due", 2);
+    first.push_back("tre", 3);
+    first.push_back("quattro", 4);
 
-    bi_ring<int, string> second;
-    first.push_back(1, "Раз");
-    first.push_back(2, "Два");
-    first.push_back(3, "Три");
+    bi_ring<string, int> second;
+    second.push_back("due", 1);
+    second.push_back("tre", 1);
+    second.push_back("quattro", 3);
+    second.push_back("cinque", 5);
 
     auto res = join(first, second);
 
-    string info_expected[] = {"OneРаз", "TwoДва", "ThreeТри", "Four"};
+    string info_expected[] = {"uno", "due", "tre", "quattro", "cinque"};
+    int exp_infos[] = {1, 3, 4, 7, 5};
     auto it = res.cbegin();
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
     {
-        CHECK(it.key() == i + 1);
-        CHECK(it.info() == info_expected[i]);
+        CHECK(it.key() == info_expected[i]);
+        CHECK(it.info() == exp_infos[i]);
         it.next();
     }
 }
